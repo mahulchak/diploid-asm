@@ -12,44 +12,53 @@ struct qord {
 	char alt;
 	};
 vector<string> splitField(string & str, char c);
-
+void readFasta(ifstream & fasm,map<string,string> & refAsm);
 int main()
 {
-	ifstream fsam,fvcf;
+	ifstream fsam,fvcf,fasm;
 	vector<string> vs;
-	string samLine, cigar,str, qSeq,vcfLine;
+	string samLine, cigar,str, qSeq,vcfLine ,refChrom,rName;
 	int pos = 0, pos1 =0, refPos =0, qPos =0;
 	map<int,int> aln;//stores base to base mapping of an alignment
+	map<string,string> refAsm;
 	vector<qord> snpPos;//stores SNP positions
 	qord tempQord;
-	fvcf.open("clean.recode.vcf");
-	while(getline(fvcf,vcfLine))
-	{
-		if(vcfLine[0] != '#')
-		{
-			vs = splitField(vcfLine,'\t');
-			tempQord.chrom = vs[0];
-			tempQord.pos = stoi(vs[1]);
-			
-			snpPos.push
-			if(vs[3].size() == 1)
-			{
-				cout<<vcfLine<<endl;
-			}
-		}	
-	}		
+	fvcf.open("clean.recode.vcf");//open the vcf file to read the SNPs
+//	while(getline(fvcf,vcfLine))
+//	{
+//		if(vcfLine[0] != '#')
+//		{
+//			vs = splitField(vcfLine,'\t');
+//			if(vs[3].size() == 1)
+//			{
+//				tempQord.chrom = vs[0];
+//				tempQord.pos = stoi(vs[1]);
+//				tempQord.ref = vs[3][0];//assign the state
+//				tempQord.alt = vs[4][0];
+//				snpPos.push_back(tempQord);
+//				//cout<<vcfLine<<endl;
+//				//cout<<tempQord.chrom<<'\t'<<tempQord.pos<<'\t'<<tempQord.ref<<'\t'<<tempQord.alt<<endl;
+//			}
+//		}	
+//	}		
 	fvcf.close();
-	fsam.open("hyb_iso1-ref.sorted.sam");
+	fasm.open("iso1.scaffold.fasta");//open the genome
+	readFasta(fasm,refAsm);//read the genome assembly into refAsm
+	fasm.close();
+	fsam.open("hyb_iso1-ref.sorted.sam");//get the read alignments
 	while(getline(fsam,samLine))
 	{
 		if(samLine[0] != '#')
 		{
 			vs = splitField(samLine,'\t');
 			cigar = vs[5];
+			rName = vs[0];//read name
 			refPos = stoi(vs[3]);
+			refChrom = vs[2];
 			qSeq = vs[9];
 			cout<<cigar<<endl;
 			pos1 = -1;
+			qPos = 0;//reset qPos
 			for(unsigned int i=0; i<cigar.size();i++)
 			{
 				if(cigar[i] == 'M')
@@ -58,8 +67,14 @@ int main()
 					str = cigar.substr(pos1+1,pos-pos1-1);
 					pos1 = pos;
 					cout<<str<<endl;
-					refPos = refPos + stoi(str);//both reference and query increases
-					qPos = qPos + stoi(str);
+					for(int i=0;i<stoi(str);i++)
+					{
+						refPos++;
+						qPos++;
+cout<<refChrom<<'\t'<<refPos<<'\t'<<refAsm[refChrom][refPos-1]<<'\t'<<rName<<'\t'<<qPos<<'\t'<<qSeq[qPos]<<endl;
+					}						
+					//refPos = refPos + stoi(str);//both reference and query increases
+					//qPos = qPos + stoi(str);
 				}
 				if(cigar[i] == 'S')
 				{
@@ -153,4 +168,18 @@ vector<string> splitField(string & str, char c)
 	return vs;
 }
 ///////////////////////////////////////////////////////
-
+void readFasta(ifstream & fasm,map<string,string> & refAsm)
+{
+	string str,name;
+	while(getline(fasm,str))
+	{
+		if(str[0]== '>')
+		{
+			name = str.substr(1);
+		}
+		if(str[0] != '>')
+		{
+			refAsm[name].append(str);
+		}
+	}
+}
